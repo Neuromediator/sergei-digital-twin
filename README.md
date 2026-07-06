@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Digital Twin — Ask-Me-Anything chat
 
-## Getting Started
+A public chat app where anyone can ask an AI version of you about your **education,
+certifications, experience, skills, projects, hobbies, and contacts**. Out-of-scope
+questions get a polite redirect. Built with Next.js (App Router) + TypeScript +
+Tailwind, streaming answers from **Claude Haiku 4.5** (provider-swappable).
 
-First, run the development server:
+## Quick start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# 1. Add your API key
+cp .env.example .env.local
+#   then edit .env.local and set ANTHROPIC_API_KEY=...
+
+# 2. (Optional) refresh your profile from source files
+npm run build:profile     # reads data/linkedin.pdf + data/hobbies.txt
+
+# 3. Run
+npm run dev               # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Personalize it
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **`data/linkedin.pdf`** — export your LinkedIn profile as PDF ("More → Save to PDF")
+   and drop it here. Its text becomes what the twin knows.
+2. **`data/hobbies.txt`** — free text about your hobbies, interests, and preferences.
+3. **`public/avatar.png`** — your headshot (until you add one, the header shows your
+   initials).
+4. **`data/config.ts`** — your name, greeting, title, the LinkedIn/GitHub/Hugging Face
+   links, the suggested-question chips, and the allowed topic scope.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+After changing the PDF or txt, re-run `npm run build:profile` (it also runs
+automatically before `npm run dev` and `npm run build`).
 
-## Learn More
+## How it works
 
-To learn more about Next.js, take a look at the following resources:
+- `data/profile.generated.ts` — auto-generated profile text (don't edit by hand).
+- `lib/systemPrompt.ts` — persona + guardrails; only answers in-scope topics, never
+  invents facts, refuses jailbreak/override attempts.
+- `lib/llm.ts` — provider abstraction. Default Claude Haiku 4.5; set `LLM_PROVIDER=groq`
+  or `cerebras` (+ that provider's key) in `.env.local` to swap to a faster open model.
+- `app/api/chat/route.ts` — validates input, rate-limits per IP, streams the answer.
+- `app/page.tsx` — the chat UI; conversation history is saved in the browser
+  (localStorage), so it survives page reloads. History is client-side only.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Speed / cost notes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Answers **stream**, so the first words appear in well under a second — there's no long
+blank wait regardless of model. Claude Haiku 4.5 is ~$1 in / $5 out per 1M tokens. If
+you want extreme raw throughput, flip `LLM_PROVIDER` to `groq`/`cerebras` — they run
+open models (Llama/Qwen), are cheaper per token (often $0 on their free tiers for a
+low-traffic personal site), and trade a little persona nuance. A *bigger* Claude model
+(Sonnet/Opus) is higher quality but **slower**, not faster.
 
-## Deploy on Vercel
+## Deploy to Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npx vercel        # or connect the repo in the Vercel dashboard
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Then in **Vercel → Project → Settings → Environment Variables**, add
+`ANTHROPIC_API_KEY` (and, if you swapped providers, `LLM_PROVIDER` + that key) and
+redeploy. `data/linkedin.pdf` / `data/hobbies.txt` are committed with the repo, so the
+`prebuild` step regenerates the profile on Vercel automatically.
+
+> Rate limiting is a simple in-memory per-IP limiter (15 msgs/min). It's per-instance
+> and resets on cold start — fine for a personal site. For durable, cross-instance
+> limits, swap `lib/rateLimit.ts` for Upstash Redis (`@upstash/ratelimit`).
