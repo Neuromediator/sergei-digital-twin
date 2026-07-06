@@ -34,8 +34,9 @@ yarn-error.log*
 .env*
 !.env.example
 
-# generated profile (rebuilt from data/linkedin.pdf + data/hobbies.txt via prebuild)
-/data/profile.generated.ts
+# NOTE: data/profile.generated.ts is intentionally committed so the app builds on
+# any host even if the prebuild hook doesn't run. It's regenerated from
+# data/linkedin.pdf + data/hobbies.txt by `npm run build:profile` (pre-dev/pre-build).
 
 # vercel
 .vercel
