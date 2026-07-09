@@ -1,15 +1,14 @@
-import { config } from "@/data/config";
-
 type Props = {
+  questions: string[];
   onPick: (question: string) => void;
   disabled?: boolean;
 };
 
 // Clickable starter-question chips, shown while the conversation is empty.
-export default function SuggestedChips({ onPick, disabled }: Props) {
+export default function SuggestedChips({ questions, onPick, disabled }: Props) {
   return (
     <div className="flex flex-wrap gap-3">
-      {config.suggestedQuestions.map((q) => (
+      {questions.map((q) => (
         <button
           key={q}
           type="button"

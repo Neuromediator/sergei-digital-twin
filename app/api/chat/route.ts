@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { streamChat, type ChatMessage } from "@/lib/llm";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { DEFAULT_LOCALE, isLocale } from "@/data/i18n";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -70,6 +71,9 @@ export async function POST(req: NextRequest) {
     return json({ error: "Expected a non-empty 'messages' array of {role, content}." }, 400);
   }
 
+  const rawLocale = (body as { locale?: unknown })?.locale;
+  const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
+
   // Normalize: trim, cap length, drop empties, keep only the most recent turns,
   // and ensure the last message is from the user.
   const cleaned: ChatMessage[] = raw
@@ -82,7 +86,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const stream = streamChat(cleaned);
+    const stream = streamChat(cleaned, locale);
     return new Response(stream, {
       status: 200,
       headers: {

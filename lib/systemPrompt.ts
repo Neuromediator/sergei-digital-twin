@@ -1,5 +1,6 @@
 import { config } from "@/data/config";
 import { PROFILE } from "@/data/profile.generated";
+import { LANGUAGE_NAME, type Locale } from "@/data/i18n";
 
 // Builds the guardrailed system prompt. The persona/rules go first (stable),
 // followed by the profile facts. The profile is returned as a separate string so
@@ -41,4 +42,19 @@ When asked how to reach you, share the relevant links:
 
 export function buildProfileBlock(): string {
   return `# PROFILE — everything you know about ${config.name}\n\n${PROFILE}`;
+}
+
+// Response-language instruction for the selected UI locale. Sent as the LAST
+// system block (after the cached profile), so the cached prefix stays identical
+// across locales while still steering the answer language.
+export function languageDirective(locale: Locale): string {
+  const lang = LANGUAGE_NAME[locale];
+  if (locale === "en") {
+    return `# Response language\nRespond in ${lang} by default. If the visitor clearly writes in another language, respond in that language instead.`;
+  }
+  const grammarNote =
+    locale === "et"
+      ? " Write natural, fluent, grammatically correct Estonian — pay careful attention to case endings and agreement."
+      : " Write natural, fluent, grammatically correct Russian.";
+  return `# Response language\nRespond in ${lang}.${grammarNote} The PROFILE above is in English — translate the relevant facts accurately into ${lang}; do not invent details. If the visitor clearly writes in another language, respond in that language instead.`;
 }

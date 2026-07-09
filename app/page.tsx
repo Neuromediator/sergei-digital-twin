@@ -2,12 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { config } from "@/data/config";
+import { STRINGS, detectLocale, isLocale, type Locale } from "@/data/i18n";
 import Avatar from "@/components/Avatar";
 import SocialLinks from "@/components/SocialLinks";
 import SuggestedChips from "@/components/SuggestedChips";
+import LanguageToggle from "@/components/LanguageToggle";
 import ChatMessage, { type Message } from "@/components/ChatMessage";
 
 const STORAGE_KEY = "digital-twin-history-v1";
+const LOCALE_KEY = "digital-twin-locale-v1";
 
 function newId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
@@ -16,6 +19,7 @@ function newId(): string {
 
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [locale, setLocaleState] = useState<Locale>("en");
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [hydrated, setHydrated] = useState(false);
@@ -23,7 +27,9 @@ export default function Home() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Load persisted history after mount (client-only, avoids SSR mismatch).
+  const t = STRINGS[locale];
+
+  // Load persisted history + locale after mount (client-only).
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -34,10 +40,29 @@ export default function Home() {
     } catch {
       // ignore corrupt storage
     }
+    try {
+      const savedLocale = localStorage.getItem(LOCALE_KEY);
+      if (isLocale(savedLocale)) {
+        setLocaleState(savedLocale);
+      } else {
+        setLocaleState(detectLocale(navigator.language));
+      }
+    } catch {
+      setLocaleState(detectLocale(typeof navigator !== "undefined" ? navigator.language : "en"));
+    }
     setHydrated(true);
   }, []);
 
-  // Persist on every change (once hydrated).
+  const setLocale = useCallback((next: Locale) => {
+    setLocaleState(next);
+    try {
+      localStorage.setItem(LOCALE_KEY, next);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Persist history on change (once hydrated).
   useEffect(() => {
     if (!hydrated) return;
     try {
@@ -57,10 +82,10 @@ export default function Home() {
       const trimmed = text.trim();
       if (!trimmed || streaming) return;
 
+      const tt = STRINGS[locale];
       const userMsg: Message = { id: newId(), role: "user", content: trimmed };
       const assistantId = newId();
 
-      // Build the history to send (existing turns + this user message).
       const history = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
 
       setMessages((prev) => [
@@ -80,18 +105,11 @@ export default function Home() {
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: history }),
+          body: JSON.stringify({ messages: history, locale }),
         });
 
         if (!res.ok || !res.body) {
-          let errMsg = "Something went wrong. Please try again.";
-          try {
-            const data = await res.json();
-            if (data?.error) errMsg = data.error;
-          } catch {
-            // non-JSON error
-          }
-          setAssistant(() => errMsg);
+          setAssistant(() => (res.status === 429 ? tt.errorRateLimit : tt.errorGeneric));
           return;
         }
 
@@ -104,13 +122,13 @@ export default function Home() {
           if (chunk) setAssistant((prev) => prev + chunk);
         }
       } catch {
-        setAssistant((prev) => prev || "Network error — please check your connection and try again.");
+        setAssistant((prev) => prev || tt.errorNetwork);
       } finally {
         setStreaming(false);
         inputRef.current?.focus();
       }
     },
-    [messages, streaming],
+    [messages, streaming, locale],
   );
 
   const onSubmit = (e: React.FormEvent) => {
@@ -151,19 +169,18 @@ export default function Home() {
               <h1 className="truncate text-lg font-bold leading-tight text-white sm:text-2xl">
                 {config.name}
               </h1>
-              {config.title && (
-                <p className="truncate text-xs text-neutral-500 sm:text-sm">{config.title}</p>
-              )}
+              <p className="truncate text-xs text-neutral-500 sm:text-sm">{t.title}</p>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2 sm:gap-4">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <LanguageToggle locale={locale} onChange={setLocale} label={t.languageMenu} />
             <SocialLinks />
             {messages.length > 0 && (
               <button
                 type="button"
                 onClick={clearChat}
-                aria-label="Clear chat"
-                title="Clear chat"
+                aria-label={t.clearTitle}
+                title={t.clearTitle}
                 className="flex shrink-0 items-center gap-1.5 rounded-md border border-neutral-800 px-2 py-1.5 text-xs text-neutral-400 transition-colors hover:border-neutral-600 hover:text-white"
               >
                 <svg
@@ -179,7 +196,7 @@ export default function Home() {
                   <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                   <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
                 </svg>
-                <span className="hidden sm:inline">Clear</span>
+                <span className="hidden sm:inline">{t.clear}</span>
               </button>
             )}
           </div>
@@ -187,8 +204,8 @@ export default function Home() {
 
         {/* Messages */}
         <div ref={scrollRef} className="chat-scroll flex-1 space-y-4 overflow-y-auto px-5 py-6 sm:px-7">
-          {/* Greeting (always shown) */}
-          <ChatMessage message={{ id: "greeting", role: "assistant", content: config.greeting }} />
+          {/* Greeting (always shown, localized) */}
+          <ChatMessage message={{ id: "greeting", role: "assistant", content: t.greeting }} />
 
           {messages.map((m, i) => (
             <ChatMessage
@@ -202,7 +219,7 @@ export default function Home() {
 
           {showChips && (
             <div className="pt-2">
-              <SuggestedChips onPick={(q) => send(q)} disabled={streaming} />
+              <SuggestedChips questions={t.suggestedQuestions} onPick={(q) => send(q)} disabled={streaming} />
             </div>
           )}
         </div>
@@ -216,13 +233,13 @@ export default function Home() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={onKeyDown}
               rows={1}
-              placeholder="Type your message..."
+              placeholder={t.inputPlaceholder}
               className="max-h-32 flex-1 resize-none bg-transparent py-1.5 text-[15px] text-white placeholder-neutral-500 focus:outline-none"
             />
             <button
               type="submit"
               disabled={streaming || input.trim().length === 0}
-              aria-label="Send message"
+              aria-label={t.send}
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-800 text-neutral-300 transition-colors hover:bg-neutral-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
             >
               <svg

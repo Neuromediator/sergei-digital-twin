@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { config } from "@/data/config";
-import { PERSONA_AND_RULES, buildProfileBlock } from "@/lib/systemPrompt";
+import { PERSONA_AND_RULES, buildProfileBlock, languageDirective } from "@/lib/systemPrompt";
+import { DEFAULT_LOCALE, type Locale } from "@/data/i18n";
 
 // Provider abstraction. `streamChat` returns a web ReadableStream of UTF-8 text
 // chunks (the answer, token by token). Default provider is Anthropic (Claude
@@ -30,23 +31,40 @@ function streamFromAsyncIterable(gen: AsyncGenerator<string>): ReadableStream<Ui
 
 // ---- Anthropic (default) ------------------------------------------------------
 
-async function* anthropicDeltas(messages: ChatMessage[]): AsyncGenerator<string> {
-  const client = new Anthropic(); // reads ANTHROPIC_API_KEY
+// Hybrid model routing: Haiku for English (cheap/fast), Sonnet 5 for Estonian &
+// Russian (much stronger grammar in morphologically rich languages).
+function modelForLocale(locale: Locale): "claude-haiku-4-5" | "claude-sonnet-5" {
+  return locale === "en" ? "claude-haiku-4-5" : "claude-sonnet-5";
+}
 
-  const stream = client.messages.stream({
-    model: "claude-haiku-4-5",
+async function* anthropicDeltas(
+  messages: ChatMessage[],
+  locale: Locale,
+): AsyncGenerator<string> {
+  const client = new Anthropic(); // reads ANTHROPIC_API_KEY
+  const model = modelForLocale(locale);
+
+  const params: Anthropic.MessageStreamParams = {
+    model,
     max_tokens: 1024,
-    // Persona/rules first (stable), then the profile marked for prompt caching.
+    // Persona/rules first (stable), then the profile marked for prompt caching,
+    // then the per-locale language directive AFTER the cache breakpoint so the
+    // cached prefix (persona + profile) is identical across languages.
     system: [
       { type: "text", text: PERSONA_AND_RULES },
-      {
-        type: "text",
-        text: buildProfileBlock(),
-        cache_control: { type: "ephemeral" },
-      },
+      { type: "text", text: buildProfileBlock(), cache_control: { type: "ephemeral" } },
+      { type: "text", text: languageDirective(locale) },
     ],
     messages: messages.map((m) => ({ role: m.role, content: m.content })),
-  });
+  };
+
+  // Sonnet 5 runs adaptive thinking by default; disable it to keep chat snappy
+  // (grammar quality doesn't need thinking). Haiku doesn't accept the param.
+  if (model === "claude-sonnet-5") {
+    params.thinking = { type: "disabled" };
+  }
+
+  const stream = client.messages.stream(params);
 
   for await (const event of stream) {
     if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
@@ -81,6 +99,7 @@ function openaiCompatConfig(provider: "groq" | "cerebras"): OpenAICompatConfig {
 async function* openaiCompatDeltas(
   provider: "groq" | "cerebras",
   messages: ChatMessage[],
+  locale: Locale,
 ): AsyncGenerator<string> {
   const { baseUrl, apiKey, model } = openaiCompatConfig(provider);
   if (!apiKey) {
@@ -89,7 +108,7 @@ async function* openaiCompatDeltas(
     );
   }
 
-  const system = `${PERSONA_AND_RULES}\n\n${buildProfileBlock()}`;
+  const system = `${PERSONA_AND_RULES}\n\n${buildProfileBlock()}\n\n${languageDirective(locale)}`;
   const res = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
@@ -139,13 +158,16 @@ async function* openaiCompatDeltas(
 
 // ---- Public entry point -------------------------------------------------------
 
-export function streamChat(messages: ChatMessage[]): ReadableStream<Uint8Array> {
+export function streamChat(
+  messages: ChatMessage[],
+  locale: Locale = DEFAULT_LOCALE,
+): ReadableStream<Uint8Array> {
   const provider = (process.env.LLM_PROVIDER || "anthropic").toLowerCase();
 
   if (provider === "groq" || provider === "cerebras") {
-    return streamFromAsyncIterable(openaiCompatDeltas(provider, messages));
+    return streamFromAsyncIterable(openaiCompatDeltas(provider, messages, locale));
   }
-  return streamFromAsyncIterable(anthropicDeltas(messages));
+  return streamFromAsyncIterable(anthropicDeltas(messages, locale));
 }
 
 export const activeProvider = (process.env.LLM_PROVIDER || "anthropic").toLowerCase();

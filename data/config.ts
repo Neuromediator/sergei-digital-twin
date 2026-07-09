@@ -10,12 +10,9 @@ export const config = {
   // Display name shown in the header and used by the twin to speak as you.
   name: "Sergei Maslennikov",
 
-  // Short role/tagline (optional; shown under the name if you want — currently
-  // used in the system prompt for context).
+  // Short role/tagline used in the system prompt for context. The DISPLAYED title,
+  // greeting, and suggested questions are localized in data/i18n.ts (per language).
   title: "LLM Engineer / AI Practitioner",
-
-  // First message the twin shows on load.
-  greeting: "Hi there! I am Sergei. Feel free to ask me anything about my work!",
 
   // Path to your headshot in /public. Replace public/avatar.png with your photo.
   avatarSrc: "/avatar.png",
@@ -28,14 +25,6 @@ export const config = {
     huggingface: "https://huggingface.co/Neuromediator",
     email: "sergeimaslennikov89@gmail.com",
   },
-
-  // Clickable starter questions (shown as chips while the chat is empty).
-  suggestedQuestions: [
-    "Tell me about your background and experience.",
-    "What kinds of projects are you working on now?",
-    "What are your strongest technical skills?",
-    "How can I get in touch with you?",
-  ],
 
   // Topics the twin is allowed to discuss. Anything outside this list gets a
   // polite redirect back to one of these.
