@@ -58,7 +58,8 @@ export default function LanguageToggle({ locale, onChange, label }: Props) {
         className="flex items-center gap-1 rounded-md border border-neutral-800 px-2 py-1.5 text-xs font-medium text-neutral-300 transition-colors hover:border-neutral-600 hover:text-white"
       >
         <GlobeIcon />
-        <span className="uppercase">{locale}</span>
+        {/* Language code hidden on mobile to save header width; menu still shows names */}
+        <span className="hidden uppercase sm:inline">{locale}</span>
       </button>
 
       {open && (

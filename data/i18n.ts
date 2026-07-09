@@ -28,6 +28,7 @@ export type Strings = {
   online: string;
   send: string;
   languageMenu: string; // aria-label for the toggle
+  moreMenu: string; // aria-label for the mobile overflow (⋯) menu
   errorRateLimit: string;
   errorGeneric: string;
   errorNetwork: string;
@@ -50,6 +51,7 @@ export const STRINGS: Record<Locale, Strings> = {
     online: "online",
     send: "Send message",
     languageMenu: "Change language",
+    moreMenu: "More options",
     errorRateLimit: "You're sending messages too fast. Please wait a moment.",
     errorGeneric: "Something went wrong. Please try again.",
     errorNetwork: "Network error — please check your connection and try again.",
@@ -70,6 +72,7 @@ export const STRINGS: Record<Locale, Strings> = {
     online: "võrgus",
     send: "Saada sõnum",
     languageMenu: "Muuda keelt",
+    moreMenu: "Rohkem valikuid",
     errorRateLimit: "Saadad sõnumeid liiga kiiresti. Palun oota hetk.",
     errorGeneric: "Midagi läks valesti. Palun proovi uuesti.",
     errorNetwork: "Võrguviga — kontrolli ühendust ja proovi uuesti.",
@@ -90,6 +93,7 @@ export const STRINGS: Record<Locale, Strings> = {
     online: "в сети",
     send: "Отправить сообщение",
     languageMenu: "Сменить язык",
+    moreMenu: "Ещё",
     errorRateLimit: "Вы отправляете сообщения слишком часто. Пожалуйста, подождите немного.",
     errorGeneric: "Что-то пошло не так. Попробуйте ещё раз.",
     errorNetwork: "Ошибка сети — проверьте подключение и попробуйте снова.",

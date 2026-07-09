@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { config } from "@/data/config";
-import { STRINGS, detectLocale, isLocale, type Locale } from "@/data/i18n";
+import { STRINGS, isLocale, type Locale } from "@/data/i18n";
 import Avatar from "@/components/Avatar";
 import SocialLinks from "@/components/SocialLinks";
 import SuggestedChips from "@/components/SuggestedChips";
 import LanguageToggle from "@/components/LanguageToggle";
+import OverflowMenu from "@/components/OverflowMenu";
 import ChatMessage, { type Message } from "@/components/ChatMessage";
 
 const STORAGE_KEY = "digital-twin-history-v1";
@@ -40,15 +41,13 @@ export default function Home() {
     } catch {
       // ignore corrupt storage
     }
+    // Default language is English for everyone; only a previously-saved manual
+    // choice overrides it (no browser auto-detection).
     try {
       const savedLocale = localStorage.getItem(LOCALE_KEY);
-      if (isLocale(savedLocale)) {
-        setLocaleState(savedLocale);
-      } else {
-        setLocaleState(detectLocale(navigator.language));
-      }
+      if (isLocale(savedLocale)) setLocaleState(savedLocale);
     } catch {
-      setLocaleState(detectLocale(typeof navigator !== "undefined" ? navigator.language : "en"));
+      // ignore — stays "en"
     }
     setHydrated(true);
   }, []);
@@ -163,10 +162,10 @@ export default function Home() {
       <section className="relative flex h-[calc(100vh-2rem)] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-neutral-800 bg-neutral-950/80 shadow-2xl sm:h-[88vh]">
         {/* Header */}
         <header className="flex items-center justify-between gap-2 border-b border-neutral-800 px-4 py-3.5 sm:gap-3 sm:px-7 sm:py-4">
-          <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
             <Avatar size={44} showStatus ring />
             <div className="min-w-0">
-              <h1 className="truncate text-lg font-bold leading-tight text-white sm:text-2xl">
+              <h1 className="truncate text-base font-bold leading-tight text-white sm:text-2xl">
                 {config.name}
               </h1>
               <p className="truncate text-xs text-neutral-500 sm:text-sm">{t.title}</p>
@@ -174,31 +173,45 @@ export default function Home() {
           </div>
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <LanguageToggle locale={locale} onChange={setLocale} label={t.languageMenu} />
-            <SocialLinks />
-            {messages.length > 0 && (
-              <button
-                type="button"
-                onClick={clearChat}
-                aria-label={t.clearTitle}
-                title={t.clearTitle}
-                className="flex shrink-0 items-center gap-1.5 rounded-md border border-neutral-800 px-2 py-1.5 text-xs text-neutral-400 transition-colors hover:border-neutral-600 hover:text-white"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-4 w-4"
+
+            {/* Desktop: social links + clear inline */}
+            <div className="hidden sm:flex sm:items-center sm:gap-3">
+              <SocialLinks />
+              {messages.length > 0 && (
+                <button
+                  type="button"
+                  onClick={clearChat}
+                  aria-label={t.clearTitle}
+                  title={t.clearTitle}
+                  className="flex shrink-0 items-center gap-1.5 rounded-md border border-neutral-800 px-2 py-1.5 text-xs text-neutral-400 transition-colors hover:border-neutral-600 hover:text-white"
                 >
-                  <path d="M3 6h18" />
-                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                </svg>
-                <span className="hidden sm:inline">{t.clear}</span>
-              </button>
-            )}
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-4 w-4"
+                  >
+                    <path d="M3 6h18" />
+                    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                  </svg>
+                  <span>{t.clear}</span>
+                </button>
+              )}
+            </div>
+
+            {/* Mobile: social links + clear collapse into an overflow menu */}
+            <div className="sm:hidden">
+              <OverflowMenu
+                ariaLabel={t.moreMenu}
+                showClear={messages.length > 0}
+                clearLabel={t.clearTitle}
+                onClear={clearChat}
+              />
+            </div>
           </div>
         </header>
 
