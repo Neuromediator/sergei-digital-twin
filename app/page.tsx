@@ -144,27 +144,42 @@ export default function Home() {
 
       <section className="relative flex h-[calc(100vh-2rem)] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-neutral-800 bg-neutral-950/80 shadow-2xl sm:h-[88vh]">
         {/* Header */}
-        <header className="flex items-center justify-between gap-3 border-b border-neutral-800 px-5 py-4 sm:px-7">
-          <div className="flex items-center gap-3">
-            <Avatar size={46} showStatus ring />
-            <div>
-              <h1 className="text-xl font-bold leading-tight text-white sm:text-2xl">
+        <header className="flex items-center justify-between gap-2 border-b border-neutral-800 px-4 py-3.5 sm:gap-3 sm:px-7 sm:py-4">
+          <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+            <Avatar size={44} showStatus ring />
+            <div className="min-w-0">
+              <h1 className="truncate text-lg font-bold leading-tight text-white sm:text-2xl">
                 {config.name}
               </h1>
               {config.title && (
-                <p className="text-xs text-neutral-500 sm:text-sm">{config.title}</p>
+                <p className="truncate text-xs text-neutral-500 sm:text-sm">{config.title}</p>
               )}
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-4">
             <SocialLinks />
             {messages.length > 0 && (
               <button
                 type="button"
                 onClick={clearChat}
-                className="hidden rounded-md border border-neutral-800 px-2.5 py-1 text-xs text-neutral-400 transition-colors hover:border-neutral-600 hover:text-white sm:block"
+                aria-label="Clear chat"
+                title="Clear chat"
+                className="flex shrink-0 items-center gap-1.5 rounded-md border border-neutral-800 px-2 py-1.5 text-xs text-neutral-400 transition-colors hover:border-neutral-600 hover:text-white"
               >
-                Clear chat
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-4 w-4"
+                >
+                  <path d="M3 6h18" />
+                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                </svg>
+                <span className="hidden sm:inline">Clear</span>
               </button>
             )}
           </div>

@@ -41,7 +41,7 @@ const linkClass =
 export default function SocialLinks() {
   const { linkedin, github, huggingface, email } = config.socials;
   return (
-    <nav className="flex items-center gap-4" aria-label="Profile links">
+    <nav className="flex items-center gap-3 sm:gap-4" aria-label="Profile links">
       {linkedin && (
         <a href={linkedin} target="_blank" rel="noopener noreferrer" className={linkClass} title="LinkedIn">
           <LinkedInIcon />
